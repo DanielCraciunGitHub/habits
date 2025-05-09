@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAtom } from "jotai/react";
-import { atomWithStorage } from "jotai/utils";
 import { Plus, Trash } from "lucide-react";
 
+import { unslugify } from "@/lib/utils";
+import { habitsAtom } from "@/hooks/habits-atoms";
 import {
   Sidebar,
   SidebarContent,
@@ -22,22 +24,14 @@ import {
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
-const habitsAtom = atomWithStorage<
-  {
-    title: string;
-    url: string;
-  }[]
->("habits", []);
-
 export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const [habits, setHabits] = useAtom(habitsAtom);
   const [addingHabit, setAddingHabit] = useState(false);
   const addHabitRef = useRef<HTMLInputElement>(null);
-
+  const router = useRouter();
   useEffect(() => {
     if (addingHabit && addHabitRef.current) {
-      // Use a small timeout to ensure the element is visible first
       setTimeout(() => {
         addHabitRef.current?.focus();
       }, 10);
@@ -60,10 +54,12 @@ export function AppSidebar() {
               if (value) {
                 const newHabit = {
                   title: value,
-                  url: `/habit/${encodeURIComponent(value.toLowerCase().replace(/\s+/g, "-"))}`,
+                  url: `/habit/${habits.length + 1}`,
+                  count: 0,
                 };
                 setHabits((prev) => [...prev, newHabit]);
                 e.target.value = "";
+                router.push(newHabit.url);
               }
               setAddingHabit(false);
             }}
@@ -85,7 +81,7 @@ export function AppSidebar() {
                     onClick={() => setOpenMobile(false)}
                   >
                     <Link href={habit.url}>
-                      <span>{habit.title}</span>
+                      <span>{unslugify(habit.title)}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -111,6 +107,7 @@ export function AppSidebar() {
           size="sm"
           onClick={() => {
             setHabits([]);
+            router.push("/");
           }}
         >
           <Trash />
