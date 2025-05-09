@@ -1,11 +1,15 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Calendar } from "lucide-react";
+import { useAtom } from "jotai/react";
+import { atomWithStorage } from "jotai/utils";
+import { Plus, Trash } from "lucide-react";
 
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -15,25 +19,31 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
-const items = [
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+
+const habitsAtom = atomWithStorage<
   {
-    title: "Matchmaking",
-    url: "/match",
-    icon: <Calendar />,
-  },
-  {
-    title: "Matches",
-    url: "/matches",
-    icon: <Calendar />,
-  },
-  {
-    title: "Partner",
-    url: "/partner",
-    icon: <Calendar />,
-  },
-];
+    title: string;
+    url: string;
+  }[]
+>("habits", []);
+
 export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
+  const [habits, setHabits] = useAtom(habitsAtom);
+  const [addingHabit, setAddingHabit] = useState(false);
+  const addHabitRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (addingHabit && addHabitRef.current) {
+      // Use a small timeout to ensure the element is visible first
+      setTimeout(() => {
+        addHabitRef.current?.focus();
+      }, 10);
+    }
+  }, [addingHabit]);
+
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarContent>
@@ -41,17 +51,41 @@ export function AppSidebar() {
           <SidebarGroupLabel>
             <Link href="/">Habit Tracker</Link>
           </SidebarGroupLabel>
+          <Input
+            placeholder="Enter a new habit"
+            className={`mb-2 ${!addingHabit ? "hidden" : "block"}`}
+            ref={addHabitRef}
+            onBlur={(e) => {
+              const value = e.target.value.trim();
+              if (value) {
+                const newHabit = {
+                  title: value,
+                  url: `/habit/${encodeURIComponent(value.toLowerCase().replace(/\s+/g, "-"))}`,
+                };
+                setHabits((prev) => [...prev, newHabit]);
+                e.target.value = "";
+              }
+              setAddingHabit(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.currentTarget.blur();
+              } else if (e.key === "Escape") {
+                e.currentTarget.value = "";
+                setAddingHabit(false);
+              }
+            }}
+          />
           <SidebarGroupContent>
             <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.title}>
+              {habits.map((habit) => (
+                <SidebarMenuItem key={habit.title}>
                   <SidebarMenuButton
                     asChild
                     onClick={() => setOpenMobile(false)}
                   >
-                    <Link href={item.url}>
-                      {item.icon}
-                      <span>{item.title}</span>
+                    <Link href={habit.url}>
+                      <span>{habit.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -60,6 +94,29 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <Button
+          variant="default"
+          size="sm"
+          onClick={() => {
+            setAddingHabit(true);
+            setOpenMobile(false);
+          }}
+        >
+          <Plus />
+          <span>New Habit</span>
+        </Button>
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => {
+            setHabits([]);
+          }}
+        >
+          <Trash />
+          <span>Clear Habits</span>
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }
