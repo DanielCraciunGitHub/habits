@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1745271324769,
+      "tag": "0000_elite_sentinels",
+      "breakpoints": true
+    }
+  ]
+}
