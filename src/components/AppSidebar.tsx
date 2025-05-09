@@ -16,7 +16,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
@@ -47,12 +46,25 @@ export function AppSidebar() {
     return () => clearTimeout(timer);
   }, []);
 
+  const habitCountColor = (count: number): string => {
+    if (count === 0) return "text-red-500";
+    if (count <= 10) return "text-orange-400";
+    if (count <= 20) return "text-orange-300";
+    if (count <= 30) return "text-yellow-500";
+    if (count <= 40) return "text-yellow-400";
+    if (count <= 50) return "text-yellow-300";
+    if (count <= 65) return "text-blue-500";
+    return "text-green-400";
+  };
+
   return (
     <Sidebar collapsible="offcanvas">
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel>
-            <Link href="/">Habit Tracker</Link>
+            <Link href="https://x.com/craciun_07" target="_blank">
+              Made with ❤️ by @craciun_07
+            </Link>
           </SidebarGroupLabel>
           <Input
             placeholder="Enter a new habit"
@@ -94,27 +106,32 @@ export function AppSidebar() {
                     className="hover:bg-secondary p-2 rounded-md"
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center justify-center gap-1">
-                        <span className="text-lg font-medium text-primary">
-                          {habit.count}
-                        </span>
-                        <SidebarMenuButton
-                          asChild
-                          onClick={() => setOpenMobile(false)}
-                        >
-                          <Link href={habit.url}>
-                            <span>{unslugify(habit.title)}</span>
-                          </Link>
-                        </SidebarMenuButton>
-                      </div>
+                      <Link
+                        href={habit.url}
+                        className="flex-1 flex items-center"
+                        onClick={() => setOpenMobile(false)}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          <div
+                            className={`flex gap-1 text-lg ${habitCountColor(
+                              habit.count
+                            )}`}
+                          >
+                            <span>{habit.count > 65 && "🎉"}</span>
+                            <span>{habit.count}</span>
+                          </div>
+                          <span>{unslugify(habit.title)}</span>
+                        </div>
+                      </Link>
                       <Button
                         variant="destructive"
                         size="icon"
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.stopPropagation();
                           setHabits(
                             habits.filter((h) => h.url !== habit.url)
                           );
-                          router.push("/");
+                          router.push("/habit/1");
                         }}
                       >
                         <Trash />
@@ -137,17 +154,6 @@ export function AppSidebar() {
         >
           <Plus />
           <span>New Habit</span>
-        </Button>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => {
-            setHabits([]);
-            router.push("/");
-          }}
-        >
-          <Trash />
-          <span>Clear Habits</span>
         </Button>
       </SidebarFooter>
     </Sidebar>

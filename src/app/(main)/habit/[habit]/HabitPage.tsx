@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAtom } from "jotai";
-import { Plus } from "lucide-react";
+import { Minus, Pencil, Plus } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { habitsAtom } from "@/hooks/habits-atoms";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export function HabitPage({ slug }: { slug: string }) {
   const [habits, setHabits] = useAtom(habitsAtom);
   const [artificialLoading, setArtificialLoading] = useState(true);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const habit = habits.find((h) => h.url === `/habit/${slug}`);
 
@@ -22,6 +25,14 @@ export function HabitPage({ slug }: { slug: string }) {
     }, 500);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (isEditingTitle && titleInputRef.current) {
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, 10);
+    }
+  }, [isEditingTitle]);
 
   const incrementCount = () => {
     if (!habit) return;
@@ -33,6 +44,29 @@ export function HabitPage({ slug }: { slug: string }) {
     );
   };
 
+  const decrementCount = () => {
+    if (!habit || habit.count <= 0) return;
+
+    setHabits((prev) =>
+      prev.map((h) =>
+        h.url === `/habit/${slug}`
+          ? { ...h, count: Math.max(0, h.count - 1) }
+          : h
+      )
+    );
+  };
+
+  const handleTitleUpdate = (newTitle: string) => {
+    if (!habit || !newTitle.trim()) return;
+
+    setHabits((prev) =>
+      prev.map((h) =>
+        h.url === `/habit/${slug}` ? { ...h, title: newTitle.trim() } : h
+      )
+    );
+    setIsEditingTitle(false);
+  };
+
   if (artificialLoading) {
     return (
       <div className="flex flex-col w-full min-h-screen p-4 md:p-6 items-center justify-center">
@@ -42,23 +76,61 @@ export function HabitPage({ slug }: { slug: string }) {
   }
 
   return (
-    <div className="flex flex-col w-full min-h-screen p-4 md:p-6">
+    <div className="flex flex-col w-full min-h-screen p-4 md:p-6 mb-20">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
-        <h1 className="text-2xl font-bold truncate">{habit?.title}</h1>
-        <div className="text-lg font-semibold">
-          {habit?.count} completions
+        <div className="flex items-center gap-2">
+          {isEditingTitle ? (
+            <Input
+              ref={titleInputRef}
+              defaultValue={habit?.title}
+              className="text-xl font-bold max-w-[300px]"
+              onBlur={(e) => handleTitleUpdate(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.currentTarget.blur();
+                } else if (e.key === "Escape") {
+                  setIsEditingTitle(false);
+                }
+              }}
+            />
+          ) : (
+            <>
+              <h1 className="text-2xl font-bold truncate">
+                {habit?.title}
+              </h1>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsEditingTitle(true)}
+                className="h-8 w-8"
+                aria-label="Edit habit title"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="flex items-center mb-6">
+      <div className="items-center gap-4 mb-6 hidden md:flex">
         <Button
           variant="default"
           size="icon"
           onClick={incrementCount}
-          className="md:mr-4 size-12 rounded-full shadow-md"
+          className="size-12 rounded-full shadow-md"
           aria-label="Add completion"
         >
           <Plus className="h-6 w-6" />
+        </Button>
+        <Button
+          variant="destructive"
+          size="icon"
+          onClick={decrementCount}
+          className="size-12 rounded-full"
+          disabled={!habit || habit.count <= 0}
+          aria-label="Remove completion"
+        >
+          <Minus className="h-6 w-6" />
         </Button>
       </div>
 
@@ -76,16 +148,28 @@ export function HabitPage({ slug }: { slug: string }) {
         ))}
       </div>
 
-      {/* Mobile fixed button for quick access */}
-      <Button
-        variant="default"
-        size="icon"
-        onClick={incrementCount}
-        className="fixed bottom-6 right-6 size-14 rounded-full shadow-lg z-10 md:hidden"
-        aria-label="Add completion"
-      >
-        <Plus className="h-6 w-6" />
-      </Button>
+      {/* Mobile fixed buttons for quick access */}
+      <div className="fixed bottom-6 right-6 flex gap-4 z-10 md:hidden">
+        <Button
+          variant="destructive"
+          size="icon"
+          onClick={decrementCount}
+          className="size-14 rounded-full"
+          disabled={!habit || habit.count <= 0}
+          aria-label="Remove completion"
+        >
+          <Minus className="h-6 w-6" />
+        </Button>
+        <Button
+          variant="default"
+          size="icon"
+          onClick={incrementCount}
+          className="size-14 rounded-full opacity-80"
+          aria-label="Add completion"
+        >
+          <Plus className="h-6 w-6" />
+        </Button>
+      </div>
     </div>
   );
 }
