@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAtom } from "jotai";
 import { Plus } from "lucide-react";
 
@@ -7,11 +8,20 @@ import { cn } from "@/lib/utils";
 import { habitsAtom } from "@/hooks/habits-atoms";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export function HabitPage({ slug }: { slug: string }) {
   const [habits, setHabits] = useAtom(habitsAtom);
+  const [artificialLoading, setArtificialLoading] = useState(true);
 
   const habit = habits.find((h) => h.url === `/habit/${slug}`);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setArtificialLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   const incrementCount = () => {
     if (!habit) return;
@@ -23,14 +33,20 @@ export function HabitPage({ slug }: { slug: string }) {
     );
   };
 
-  if (!habit) return <div className="p-4">Habit not found</div>;
+  if (artificialLoading) {
+    return (
+      <div className="flex flex-col w-full min-h-screen p-4 md:p-6 items-center justify-center">
+        <LoadingSpinner size="xl" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full min-h-screen p-4 md:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6">
-        <h1 className="text-2xl font-bold truncate">{habit.title}</h1>
+        <h1 className="text-2xl font-bold truncate">{habit?.title}</h1>
         <div className="text-lg font-semibold">
-          {habit.count} completions
+          {habit?.count} completions
         </div>
       </div>
 
@@ -46,8 +62,8 @@ export function HabitPage({ slug }: { slug: string }) {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-20 gap-4 mt-2">
-        {Array.from({ length: habit.count }).map((_, index) => (
+      <div className="grid grid-cols-5 sm:grid-cols-9 lg:grid-cols-14 xl:grid-cols-18 2xl:grid-cols-20 gap-4 mt-2">
+        {Array.from({ length: habit?.count || 0 }).map((_, index) => (
           <Card
             key={index}
             className={cn(

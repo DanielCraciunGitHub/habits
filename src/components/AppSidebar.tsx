@@ -21,6 +21,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 
+import { LoadingSpinner } from "./LoadingSpinner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
@@ -37,6 +38,14 @@ export function AppSidebar() {
       }, 10);
     }
   }, [addingHabit]);
+
+  const [artificialLoading, setArtificialLoading] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setArtificialLoading(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <Sidebar collapsible="offcanvas">
@@ -74,18 +83,46 @@ export function AppSidebar() {
           />
           <SidebarGroupContent>
             <SidebarMenu>
-              {habits.map((habit) => (
-                <SidebarMenuItem key={habit.title}>
-                  <SidebarMenuButton
-                    asChild
-                    onClick={() => setOpenMobile(false)}
+              {artificialLoading ? (
+                <div className="flex items-center justify-center h-full">
+                  <LoadingSpinner />
+                </div>
+              ) : (
+                habits.map((habit) => (
+                  <SidebarMenuItem
+                    key={habit.url}
+                    className="hover:bg-secondary p-2 rounded-md"
                   >
-                    <Link href={habit.url}>
-                      <span>{unslugify(habit.title)}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-center gap-1">
+                        <span className="text-lg font-medium text-primary">
+                          {habit.count}
+                        </span>
+                        <SidebarMenuButton
+                          asChild
+                          onClick={() => setOpenMobile(false)}
+                        >
+                          <Link href={habit.url}>
+                            <span>{unslugify(habit.title)}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={() => {
+                          setHabits(
+                            habits.filter((h) => h.url !== habit.url)
+                          );
+                          router.push("/");
+                        }}
+                      >
+                        <Trash />
+                      </Button>
+                    </div>
+                  </SidebarMenuItem>
+                ))
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
@@ -96,7 +133,6 @@ export function AppSidebar() {
           size="sm"
           onClick={() => {
             setAddingHabit(true);
-            setOpenMobile(false);
           }}
         >
           <Plus />
