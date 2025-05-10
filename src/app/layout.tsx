@@ -5,8 +5,6 @@ import "./globals.css";
 
 import { baseMetadata, baseViewport } from "@/config/metadata";
 import Providers from "@/config/providers";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/AppSidebar";
 
 export default function RootLayout({
   children,
@@ -17,8 +15,6 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body>
         <Providers attribute="class" defaultTheme="system" enableSystem>
-          <AppSidebar />
-          <SidebarTrigger size="lg" />
           {children}
         </Providers>
         {/* ? Google Analytics */}

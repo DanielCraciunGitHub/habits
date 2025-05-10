@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getSessionCookie } from "better-auth/cookies";
 
 export default function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const sessionCookie = getSessionCookie(req);
 
-  if (pathname === "/") {
-    return NextResponse.redirect(new URL("/habit/1", req.url));
+  if (sessionCookie) {
+    return NextResponse.redirect(new URL("/", req.url));
   }
 }
+
+export const config = {
+  matcher: ["/sign-in", "/sign-up"],
+};
