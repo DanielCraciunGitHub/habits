@@ -92,7 +92,9 @@ function SortableHabitItem({
               <span>{habit.count > 65 && "🎉"}</span>
               <span>{habit.count}</span>
             </div>
-            <span>{unslugify(habit.title)}</span>
+            <span className="truncate max-w-[140px]">
+              {unslugify(habit.title)}
+            </span>
           </div>
         </div>
         <div className="flex items-center gap-2">
