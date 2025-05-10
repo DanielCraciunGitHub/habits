@@ -3,11 +3,39 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useAtom } from "jotai/react";
-import { Plus, Trash } from "lucide-react";
+import {
+  closestCenter,
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { useAtom, useSetAtom } from "jotai/react";
+import { GripVertical, Plus, Trash } from "lucide-react";
 
-import { unslugify } from "@/lib/utils";
-import { habitsAtom } from "@/hooks/habits-atoms";
+import { generateRandomId, habitCountColor, unslugify } from "@/lib/utils";
+import { habitsAtom, selectedHabitAtom } from "@/hooks/habits-atoms";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
   Sidebar,
   SidebarContent,
@@ -16,7 +44,6 @@ import {
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
-  SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
 
@@ -24,12 +51,94 @@ import { LoadingSpinner } from "./LoadingSpinner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
+function SortableHabitItem({
+  habit,
+  onDelete,
+  onSelect,
+}: {
+  habit: { id: string; title: string; count: number };
+  onDelete: () => void;
+  onSelect: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition } =
+    useSortable({ id: habit.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="hover:bg-secondary p-2 rounded-md"
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex-1 flex items-center" onClick={onSelect}>
+          <div className="flex items-center justify-center gap-1">
+            <div
+              className="cursor-grab active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div
+              className={`flex items-center justify-center gap-1 text-lg ${habitCountColor(
+                habit.count
+              )}`}
+            >
+              <span>{habit.count > 65 && "🎉"}</span>
+              <span>{habit.count}</span>
+            </div>
+            <span>{unslugify(habit.title)}</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="destructive"
+                className="cursor-pointer"
+                size="icon"
+              >
+                <Trash />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will permanently delete the habit &quot;
+                  {unslugify(habit.title)}&quot; and all its data. This
+                  action cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  className="bg-red-500 hover:bg-red-600 text-white"
+                  onClick={onDelete}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const [habits, setHabits] = useAtom(habitsAtom);
   const [addingHabit, setAddingHabit] = useState(false);
   const addHabitRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const setSelectedHabit = useSetAtom(selectedHabitAtom);
   useEffect(() => {
     if (addingHabit && addHabitRef.current) {
       setTimeout(() => {
@@ -42,19 +151,28 @@ export function AppSidebar() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setArtificialLoading(false);
-    }, 500);
+    }, 100);
     return () => clearTimeout(timer);
   }, []);
 
-  const habitCountColor = (count: number): string => {
-    if (count === 0) return "text-red-500";
-    if (count <= 10) return "text-orange-400";
-    if (count <= 20) return "text-orange-300";
-    if (count <= 30) return "text-yellow-500";
-    if (count <= 40) return "text-yellow-400";
-    if (count <= 50) return "text-yellow-300";
-    if (count <= 65) return "text-blue-500";
-    return "text-green-400";
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      setHabits((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id);
+        const newIndex = items.findIndex((item) => item.id === over.id);
+
+        return arrayMove(items, oldIndex, newIndex);
+      });
+    }
   };
 
   return (
@@ -74,13 +192,13 @@ export function AppSidebar() {
               const value = e.target.value.trim();
               if (value) {
                 const newHabit = {
+                  id: generateRandomId(),
                   title: value,
-                  url: `/habit/${habits.length + 1}`,
                   count: 0,
                 };
                 setHabits((prev) => [...prev, newHabit]);
                 e.target.value = "";
-                router.push(newHabit.url);
+                router.push(`/habit/${newHabit.id}`);
               }
               setAddingHabit(false);
             }}
@@ -100,45 +218,40 @@ export function AppSidebar() {
                   <LoadingSpinner />
                 </div>
               ) : (
-                habits.map((habit) => (
-                  <SidebarMenuItem
-                    key={habit.url}
-                    className="hover:bg-secondary p-2 rounded-md"
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={habits.map((h) => h.id)}
+                    strategy={verticalListSortingStrategy}
                   >
-                    <div className="flex items-center justify-between">
-                      <Link
-                        href={habit.url}
-                        className="flex-1 flex items-center"
-                        onClick={() => setOpenMobile(false)}
-                      >
-                        <div className="flex items-center justify-center gap-1">
-                          <div
-                            className={`flex gap-1 text-lg ${habitCountColor(
-                              habit.count
-                            )}`}
-                          >
-                            <span>{habit.count > 65 && "🎉"}</span>
-                            <span>{habit.count}</span>
-                          </div>
-                          <span>{unslugify(habit.title)}</span>
-                        </div>
-                      </Link>
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
+                    {habits.map((habit) => (
+                      <SortableHabitItem
+                        key={habit.id}
+                        habit={habit}
+                        onDelete={() => {
                           setHabits(
-                            habits.filter((h) => h.url !== habit.url)
+                            habits.filter((h) => h.id !== habit.id)
                           );
-                          router.push("/habit/1");
+                          setSelectedHabit(null);
+                          router.push(
+                            `/habit/${
+                              habits.find((h) => h.id !== habit.id)?.id ||
+                              "1"
+                            }`
+                          );
                         }}
-                      >
-                        <Trash />
-                      </Button>
-                    </div>
-                  </SidebarMenuItem>
-                ))
+                        onSelect={() => {
+                          setOpenMobile(false);
+                          setSelectedHabit(habit.id);
+                          router.push(`/habit/${habit.id}`);
+                        }}
+                      />
+                    ))}
+                  </SortableContext>
+                </DndContext>
               )}
             </SidebarMenu>
           </SidebarGroupContent>

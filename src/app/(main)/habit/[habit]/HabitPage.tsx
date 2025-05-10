@@ -11,18 +11,40 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
-export function HabitPage({ slug }: { slug: string }) {
+const COLORS = [
+  {
+    bg: "bg-green-500",
+    hover: "hover:bg-green-600",
+    dark: "dark:bg-green-600",
+    darkHover: "dark:hover:bg-green-700",
+  },
+  {
+    bg: "bg-red-500",
+    hover: "hover:bg-red-600",
+    dark: "dark:bg-red-600",
+    darkHover: "dark:hover:bg-red-700",
+  },
+  {
+    bg: "bg-blue-500",
+    hover: "hover:bg-blue-600",
+    dark: "dark:bg-blue-600",
+    darkHover: "dark:hover:bg-blue-700",
+  },
+];
+
+export function HabitPage({ habitId }: { habitId: string }) {
   const [habits, setHabits] = useAtom(habitsAtom);
   const [artificialLoading, setArtificialLoading] = useState(true);
   const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [completionColors, setCompletionColors] = useState<number[]>([]);
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const habit = habits.find((h) => h.url === `/habit/${slug}`);
+  const habit = habits.find((h) => h.id === habitId);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setArtificialLoading(false);
-    }, 500);
+    }, 100);
     return () => clearTimeout(timer);
   }, []);
 
@@ -34,12 +56,26 @@ export function HabitPage({ slug }: { slug: string }) {
     }
   }, [isEditingTitle]);
 
+  useEffect(() => {
+    if (habit) {
+      setCompletionColors(Array(habit.count).fill(0));
+    }
+  }, [habit?.count]);
+
+  const rotateColor = (index: number) => {
+    setCompletionColors((prev) =>
+      prev.map((color, i) =>
+        i === index ? (color + 1) % COLORS.length : color
+      )
+    );
+  };
+
   const incrementCount = () => {
     if (!habit) return;
 
     setHabits((prev) =>
       prev.map((h) =>
-        h.url === `/habit/${slug}` ? { ...h, count: h.count + 1 } : h
+        h.id === habit.id ? { ...h, count: h.count + 1 } : h
       )
     );
   };
@@ -49,9 +85,7 @@ export function HabitPage({ slug }: { slug: string }) {
 
     setHabits((prev) =>
       prev.map((h) =>
-        h.url === `/habit/${slug}`
-          ? { ...h, count: Math.max(0, h.count - 1) }
-          : h
+        h.id === habit.id ? { ...h, count: Math.max(0, h.count - 1) } : h
       )
     );
   };
@@ -61,7 +95,7 @@ export function HabitPage({ slug }: { slug: string }) {
 
     setHabits((prev) =>
       prev.map((h) =>
-        h.url === `/habit/${slug}` ? { ...h, title: newTitle.trim() } : h
+        h.id === habit.id ? { ...h, title: newTitle.trim() } : h
       )
     );
     setIsEditingTitle(false);
@@ -117,7 +151,7 @@ export function HabitPage({ slug }: { slug: string }) {
           variant="default"
           size="icon"
           onClick={incrementCount}
-          className="size-12 rounded-full shadow-md"
+          className="size-12 rounded-full shadow-md cursor-pointer"
           aria-label="Add completion"
         >
           <Plus className="h-6 w-6" />
@@ -126,7 +160,7 @@ export function HabitPage({ slug }: { slug: string }) {
           variant="destructive"
           size="icon"
           onClick={decrementCount}
-          className="size-12 rounded-full"
+          className="size-12 rounded-full shadow-md cursor-pointer"
           disabled={!habit || habit.count <= 0}
           aria-label="Remove completion"
         >
@@ -135,17 +169,25 @@ export function HabitPage({ slug }: { slug: string }) {
       </div>
 
       <div className="grid grid-cols-5 sm:grid-cols-9 lg:grid-cols-14 xl:grid-cols-18 2xl:grid-cols-20 gap-4 mt-2">
-        {Array.from({ length: habit?.count || 0 }).map((_, index) => (
-          <Card
-            key={index}
-            className={cn(
-              "aspect-square bg-green-500 hover:bg-green-600 transition-colors cursor-pointer flex items-center justify-center text-white font-bold",
-              "dark:bg-green-600 dark:hover:bg-green-700"
-            )}
-          >
-            {index + 1}
-          </Card>
-        ))}
+        {Array.from({ length: habit?.count || 0 }).map((_, index) => {
+          const colorIndex = completionColors[index] || 0;
+          const color = COLORS[colorIndex];
+          return (
+            <Card
+              key={index}
+              onClick={() => rotateColor(index)}
+              className={cn(
+                "aspect-square transition-colors cursor-pointer flex items-center justify-center text-white font-bold",
+                color.bg,
+                color.hover,
+                color.dark,
+                color.darkHover
+              )}
+            >
+              {index + 1}
+            </Card>
+          );
+        })}
       </div>
 
       {/* Mobile fixed buttons for quick access */}
@@ -154,7 +196,7 @@ export function HabitPage({ slug }: { slug: string }) {
           variant="destructive"
           size="icon"
           onClick={decrementCount}
-          className="size-14 rounded-full"
+          className="size-14 rounded-full cursor-pointer"
           disabled={!habit || habit.count <= 0}
           aria-label="Remove completion"
         >
@@ -164,7 +206,7 @@ export function HabitPage({ slug }: { slug: string }) {
           variant="default"
           size="icon"
           onClick={incrementCount}
-          className="size-14 rounded-full opacity-80"
+          className="size-14 rounded-full opacity-80 cursor-pointer"
           aria-label="Add completion"
         >
           <Plus className="h-6 w-6" />
