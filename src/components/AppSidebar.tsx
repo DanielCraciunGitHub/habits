@@ -24,6 +24,7 @@ import { useAtom, useSetAtom } from "jotai/react";
 import { GripVertical, LogIn, LogOut, Plus, Trash } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
+import { debouncedSyncHabits } from "@/lib/sync";
 import { generateRandomId, habitCountColor, unslugify } from "@/lib/utils";
 import { habitsAtom, selectedHabitAtom } from "@/hooks/habits-atoms";
 import {
@@ -152,6 +153,12 @@ export function AppSidebar() {
       }, 10);
     }
   }, [addingHabit]);
+
+  useEffect(() => {
+    if (session) {
+      debouncedSyncHabits(habits, session.user.id);
+    }
+  }, [habits, session]);
 
   const [artificialLoading, setArtificialLoading] = useState(true);
   useEffect(() => {
