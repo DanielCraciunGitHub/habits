@@ -1,3 +1,4 @@
+import { Habit } from "@/types";
 import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export const user = sqliteTable("user", {
@@ -8,6 +9,7 @@ export const user = sqliteTable("user", {
   image: text("image"),
   createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp" }).notNull(),
+  habits: text("habits", { mode: "json" }).$type<Habit[]>(),
 });
 
 export const session = sqliteTable("session", {
