@@ -21,8 +21,9 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAtom, useSetAtom } from "jotai/react";
-import { GripVertical, Plus, Trash } from "lucide-react";
+import { GripVertical, LogIn, LogOut, Plus, Trash } from "lucide-react";
 
+import { authClient } from "@/lib/auth-client";
 import { generateRandomId, habitCountColor, unslugify } from "@/lib/utils";
 import { habitsAtom, selectedHabitAtom } from "@/hooks/habits-atoms";
 import {
@@ -46,6 +47,7 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { signOut } from "@/app/(auth)/authenticate";
 
 import { LoadingSpinner } from "./LoadingSpinner";
 import { Button } from "./ui/button";
@@ -139,6 +141,8 @@ export function AppSidebar() {
   const [habits, setHabits] = useAtom(habitsAtom);
   const [addingHabit, setAddingHabit] = useState(false);
   const addHabitRef = useRef<HTMLInputElement>(null);
+  const { data: session } = authClient.useSession();
+
   const router = useRouter();
   const setSelectedHabit = useSetAtom(selectedHabitAtom);
   useEffect(() => {
@@ -260,6 +264,26 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
+        {session ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              await signOut();
+              router.push("/sign-in");
+            }}
+          >
+            <LogOut />
+            <span>Sign Out</span>
+          </Button>
+        ) : (
+          <Link href="/sign-in">
+            <Button variant="outline" className="w-full" size="sm">
+              <LogIn />
+              <span>Sign In</span>
+            </Button>
+          </Link>
+        )}
         <Button
           variant="default"
           size="sm"
