@@ -60,7 +60,7 @@ export function SignIn() {
   }
 
   return (
-    <div className="w-full max-w-md space-y-8">
+    <div className="w-full max-w-md space-y-8 mx-2">
       <div className="text-center">
         <h1 className="text-4xl font-bold">Sign In</h1>
         <p className="mt-2 text-sm text-gray-600">
