@@ -24,8 +24,9 @@ import { useAtom, useSetAtom } from "jotai/react";
 import { GripVertical, LogIn, LogOut, Plus, Trash } from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
-import { debouncedSyncHabits } from "@/lib/sync";
+import { syncHabits } from "@/lib/sync";
 import { generateRandomId, habitCountColor, unslugify } from "@/lib/utils";
+import { useAsyncDebounce } from "@/hooks/debounce";
 import { habitsAtom, selectedHabitAtom } from "@/hooks/habits-atoms";
 import {
   AlertDialog,
@@ -143,6 +144,7 @@ export function AppSidebar() {
   const [addingHabit, setAddingHabit] = useState(false);
   const addHabitRef = useRef<HTMLInputElement>(null);
   const { data: session } = authClient.useSession();
+  const { debouncedFn } = useAsyncDebounce(syncHabits, 350);
 
   const router = useRouter();
   const setSelectedHabit = useSetAtom(selectedHabitAtom);
@@ -155,9 +157,13 @@ export function AppSidebar() {
   }, [addingHabit]);
 
   useEffect(() => {
-    if (session) {
-      debouncedSyncHabits(habits, session.user.id);
+    async function syncHabits() {
+      if (session) {
+        const res = await debouncedFn(habits, session.user.id);
+        console.log("res", res);
+      }
     }
+    syncHabits();
   }, [habits, session]);
 
   const [artificialLoading, setArtificialLoading] = useState(true);

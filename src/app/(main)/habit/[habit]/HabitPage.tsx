@@ -60,7 +60,7 @@ export function HabitPage({ habitId }: { habitId: string }) {
     if (habit) {
       setCompletionColors(Array(habit.count).fill(0));
     }
-  }, [habit?.count]);
+  }, [habit]);
 
   const rotateColor = (index: number) => {
     setCompletionColors((prev) =>
