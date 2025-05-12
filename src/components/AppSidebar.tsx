@@ -21,10 +21,17 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useAtom, useSetAtom } from "jotai/react";
-import { GripVertical, LogIn, LogOut, Plus, Trash } from "lucide-react";
+import {
+  CloudUploadIcon,
+  GripVertical,
+  LogIn,
+  LogOut,
+  Plus,
+  Trash,
+} from "lucide-react";
 
 import { authClient } from "@/lib/auth-client";
-import { syncHabits } from "@/lib/sync";
+import { getHabits, syncHabits } from "@/lib/sync";
 import { generateRandomId, habitCountColor, unslugify } from "@/lib/utils";
 import { useAsyncDebounce } from "@/hooks/debounce";
 import { habitsAtom, selectedHabitAtom } from "@/hooks/habits-atoms";
@@ -54,6 +61,12 @@ import { signOut } from "@/app/(auth)/authenticate";
 import { LoadingSpinner } from "./LoadingSpinner";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 
 function SortableHabitItem({
   habit,
@@ -142,9 +155,11 @@ export function AppSidebar() {
   const { setOpenMobile } = useSidebar();
   const [habits, setHabits] = useAtom(habitsAtom);
   const [addingHabit, setAddingHabit] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const addHabitRef = useRef<HTMLInputElement>(null);
   const { data: session } = authClient.useSession();
-  const { debouncedFn } = useAsyncDebounce(syncHabits, 350);
+  const { debouncedFn: sync } = useAsyncDebounce(syncHabits, 350);
+  const [initialSync, setInitialSync] = useState(true);
 
   const router = useRouter();
   const setSelectedHabit = useSetAtom(selectedHabitAtom);
@@ -157,22 +172,33 @@ export function AppSidebar() {
   }, [addingHabit]);
 
   useEffect(() => {
-    async function syncHabits() {
+    async function getInitialHabits() {
       if (session) {
-        const res = await debouncedFn(habits, session.user.id);
-        console.log("res", res);
+        const habits = await getHabits(session.user.id);
+        setHabits(habits);
+        console.log("habits", habits);
+        setInitialSync(false);
+      }
+    }
+    getInitialHabits();
+  }, [session]);
+
+  useEffect(() => {
+    async function syncHabits() {
+      if (session && !initialSync) {
+        try {
+          setIsSyncing(true);
+          await sync(habits, session.user.id);
+          setIsSyncing(false);
+        } catch (error) {
+          console.error(error);
+        } finally {
+          setIsSyncing(false);
+        }
       }
     }
     syncHabits();
   }, [habits, session]);
-
-  const [artificialLoading, setArtificialLoading] = useState(true);
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setArtificialLoading(false);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -198,10 +224,30 @@ export function AppSidebar() {
     <Sidebar collapsible="offcanvas">
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>
+          <SidebarGroupLabel className="flex justify-between items-center">
             <Link href="https://x.com/craciun_07" target="_blank">
               Made with ❤️ by @craciun_07
             </Link>
+            <div className="flex items-center">
+              {session && (
+                <>
+                  {isSyncing ? (
+                    <LoadingSpinner size="sm" />
+                  ) : (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CloudUploadIcon className="w-4 h-4 text-muted-foreground" />
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-muted-foreground text-white">
+                          Synced with the cloud
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  )}
+                </>
+              )}
+            </div>
           </SidebarGroupLabel>
           <Input
             placeholder="Enter a new habit"
@@ -232,7 +278,7 @@ export function AppSidebar() {
           />
           <SidebarGroupContent>
             <SidebarMenu>
-              {artificialLoading ? (
+              {initialSync ? (
                 <div className="flex items-center justify-center h-full">
                   <LoadingSpinner />
                 </div>

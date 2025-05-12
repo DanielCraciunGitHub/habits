@@ -12,8 +12,8 @@ export function slugify(text: string) {
     .replace(/[^\w-]+/g, "");
 }
 
-export function unslugify(text: string) {
-  return text.replace(/-/g, " ");
+export function unslugify(text?: string) {
+  return text?.replace(/-/g, " ");
 }
 
 export const habitCountColor = (count: number): string => {
